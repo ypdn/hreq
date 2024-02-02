@@ -1,0 +1,4 @@
+github.com/ypdn/cookiejar v0.0.0-20240202001531-5ea753170c25 h1:Wyq5S+Vxya3ooPMbUi7OFBk2ly8esiSnv2dsDiuztic=
+github.com/ypdn/cookiejar v0.0.0-20240202001531-5ea753170c25/go.mod h1:A6SXYJ4dwyIZwogCrmTwhexd2VGWRSrBhSHxQI9sYn4=
+golang.org/x/net v0.19.0 h1:zTwKpTd2XuCqf8huc7Fo2iSy+4RHPd10s4KzeTnVr1c=
+golang.org/x/net v0.19.0/go.mod h1:CfAk/cbD4CthTvqiEl8NpboMuiuOYsAr/7NOjZJtv1U=
