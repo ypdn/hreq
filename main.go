@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	mFlag = flag.String("m", "get", "http method")
+	mFlag = flag.String("m", "GET", "http method")
 	fFlag = flag.String("f", "", "request body file")
 	vFlag = flag.Bool("v", false, "write status and headers to stderr")
 	tFlag = flag.Duration("t", 0, "timeout (0 means no timeout)")
@@ -27,16 +27,16 @@ var (
 )
 
 func main() {
-	r := must(http.NewRequest("", "", nil))
-
+	header := make(http.Header)
 	flag.Func("h", "http header", func(s string) error {
 		k, v, f := strings.Cut(s, ":")
 		if !f {
 			return errors.New("bad header format, expecting 'key:value'")
 		}
-		r.Header.Set(k, v)
+		header.Set(k, v)
 		return nil
 	})
+
 	flag.Usage = usage
 	flag.Parse()
 	args := flag.Args()
@@ -44,15 +44,23 @@ func main() {
 		usage()
 	}
 
-	r.URL = must(url.Parse(args[0]))
-	r.Method = strings.ToUpper(*mFlag)
+	u := must(url.Parse(args[0]))
+	r := &http.Request{
+		Method:     *mFlag,
+		URL:        u,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     header,
+		Host:       u.Host,
+	}
 	if *fFlag != "" {
 		r.Body = must(os.Open(*fFlag))
 	}
 	jar := must(cookiejar.New(&cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 		Directory:        *jFlag,
-		ErrorLog:         log.New(os.Stderr, "", 0),
+		ErrorLog:         log.New(os.Stderr, "cookiejar: ", 0),
 	}))
 	c := &http.Client{
 		Timeout:       *tFlag,
@@ -80,7 +88,7 @@ func checkRedirect(req *http.Request, via []*http.Request) error {
 }
 
 func usage() {
-	fmt.Fprintf(flag.CommandLine.Output(), "usage: %v [flags] url\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "usage: %v [flags] url\n", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(2)
 }
