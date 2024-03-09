@@ -17,13 +17,13 @@ import (
 )
 
 var (
-	mFlag = flag.String("m", "GET", "http method")
-	fFlag = flag.String("f", "", "request body file")
-	vFlag = flag.Bool("v", false, "write status and headers to stderr")
-	tFlag = flag.Duration("t", 0, "timeout (0 means no timeout)")
-	rFlag = flag.Uint("r", 10, "number of redirects to follow")
-	eFlag = flag.Bool("e", false, "exit with error if the redirection limit is exceeded")
-	jFlag = flag.String("j", filepath.Join(must(os.UserHomeDir()), ".hreq-cookies"), "directory to use as cookie jar (pass empty string to use an in-memory jar)")
+	method       = flag.String("m", "GET", "http method")
+	body         = flag.String("f", "", "request body file")
+	verbose      = flag.Bool("v", false, "write status and headers to stderr")
+	timeout      = flag.Duration("t", 0, "timeout (0 means no timeout)")
+	maxRedirects = flag.Uint("r", 10, "number of redirects to follow")
+	exitRedirect = flag.Bool("e", false, "exit with error if the redirection limit is exceeded")
+	jarPath      = flag.String("j", filepath.Join(must(os.UserHomeDir()), ".hreq-cookies"), "directory to use as cookie jar (pass empty string to use an in-memory jar)")
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 
 	u := must(url.Parse(args[0]))
 	r := &http.Request{
-		Method:     *mFlag,
+		Method:     *method,
 		URL:        u,
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
@@ -54,23 +54,23 @@ func main() {
 		Header:     header,
 		Host:       u.Host,
 	}
-	if *fFlag != "" {
-		r.Body = must(os.Open(*fFlag))
+	if *body != "" {
+		r.Body = must(os.Open(*body))
 	}
 	jar := must(cookiejar.New(&cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
-		Directory:        *jFlag,
+		Directory:        *jarPath,
 		ErrorLog:         log.New(os.Stderr, "cookiejar: ", 0),
 	}))
 	c := &http.Client{
-		Timeout:       *tFlag,
+		Timeout:       *timeout,
 		CheckRedirect: checkRedirect,
 		Jar:           jar,
 	}
 	resp := must(c.Do(r))
 	defer resp.Body.Close()
 
-	if *vFlag {
+	if *verbose {
 		must(fmt.Fprintln(os.Stderr, resp.StatusCode, http.StatusText(resp.StatusCode), "\n"))
 		check(resp.Header.Write(os.Stderr))
 	}
@@ -78,11 +78,11 @@ func main() {
 }
 
 func checkRedirect(req *http.Request, via []*http.Request) error {
-	if len(via) > int(*rFlag) {
-		if !*eFlag {
-			return http.ErrUseLastResponse
+	if len(via) > int(*maxRedirects) {
+		if *exitRedirect {
+			return fmt.Errorf("stopped after %v redirects", *maxRedirects)
 		}
-		return fmt.Errorf("stopped after %v redirects", *rFlag)
+		return http.ErrUseLastResponse
 	}
 	return nil
 }
